@@ -78,7 +78,7 @@ chat.on('connection', function (socket) {
   })
 
   socket.on('offer', ioFunctions.sendOffer)
-  socket.on('answer', ioFunctions.sendAnser)
+  socket.on('answer', ioFunctions.sendAnser) 
   socket.on('disconnect', ioFunctions.leaveMeeting)
 })
 

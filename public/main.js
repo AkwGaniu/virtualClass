@@ -97,6 +97,7 @@ navigator.mediaDevices.getUserMedia(constraintObj)
         // Show playing UI.
       }) 
       .catch(error => { 
+        video.play()
         console.log(error) 
       });
     }
@@ -108,5 +109,146 @@ navigator.mediaDevices.getUserMedia(constraintObj)
   socket.on('removeVideo', removeVideo)   
 })
 .catch(err => {
-  console.log(err)
+  console.log({Error: err})
 })
+
+// const socket = io('/chat')
+const app =  new Vue({
+  el: '#App',
+  data: {
+    baseUrl: 'http://localhost:3000/',
+    meeting: {},
+    msg: '',
+    messages: [],
+    participants: [],
+    user: '',
+    generalMsg: null,
+    userTyping: '',
+    showParticipants: true,
+    information: '',
+    nav: {
+      video: true,
+      participants: false,
+      chat: false
+    }
+  },
+  methods: {
+    toggleNav (view) {
+      if (view === 'video') {
+        this.nav.video = true
+        this.nav.participants = false
+        this.nav.chat = false
+      } else if (view === 'participant') {
+        this.nav.video = false
+        this.nav.participants = true
+        this.nav.chat = false
+        this.showParticipants = true
+      } else if (view === 'chat') {
+        this.nav.video = false
+        this.nav.participants = false
+        this.nav.chat = true
+        this.showParticipants = false
+      }
+    },
+
+    newUser () {
+      socket.emit('newUser', this.meeting)
+    },
+    
+    initiateChat() {
+      this.userTyping = ''
+      socket.emit('finish', this.meeting.recipient.names)
+      if (this.msg !== '') {
+        const message = {
+          sender: this.meeting.recipient.names,
+          message: this.msg,
+          meeting_id: this.meeting.meeting._id
+        }
+        this.messages.push(message)
+        socket.emit('chat', message)
+        this.msg =''
+      }
+    },
+    
+    typing(e) {
+      if (e.keyCode !== 13) {
+        socket.emit('typing', this.meeting.recipient.names)
+      } else {
+        this.userTyping = ''
+        socket.emit('finish', this.meeting.recipient.names)
+      }
+    },
+    
+    leaveMeeting () {
+      const participant = this.meeting.recipient._id
+      const host = this.meeting.meeting.host
+      const payload = {
+        meeting: this.meeting.meeting._id,
+        participant: participant
+      }
+      localStorage.removeItem('meeting')
+      if (participant === host) {
+        socket.emit('endMeeting', payload)
+      } else {
+        socket.emit('leaveMeeting', payload)
+      }
+      localStorage.setItem('meetingEnd', JSON.stringify(this.meeting.recipient.names))
+      self.location = 'index.html'
+    },
+  },
+  mounted() {
+    socket.on('message', (data) => {
+      this.messages = data
+    })
+
+    socket.on('userTyping', (data) => {
+      this.userTyping = data
+    })
+
+    socket.on('userStoppedTyping', (data) => {
+      this.userTyping = ''
+    })
+
+    socket.on('appendUser', (payload) => {
+      this.participants = payload.participants
+      this.messages = payload.chats
+    })
+
+    socket.on('userJoined', (msg) => {
+      this.information = msg
+
+      setTimeout(()=> {
+        this.information = ''
+      }, 3000)
+    })
+    socket.on('participantLeft', (data) => {
+      this.participants = data.meetingParticipants
+      this.information = data.message
+
+      setTimeout(()=> {
+        this.information = ''
+      }, 3000)
+    })
+
+    socket.on('meetingEnded', (msg) => {
+      localStorage.removeItem('meeting')
+      localStorage.setItem('meetingEnd', JSON.stringify(this.meeting.recipient.names))
+      self.location = 'index.html'
+    })
+  },
+
+  created() {
+    const user = localStorage.getItem('user')
+    const meeting = localStorage.getItem('meeting')
+    const constraintObj = {video: true, audio: true}
+    if (meeting == null || user == null) {
+      self.location = `${this.baseUrl}join_meeting`
+    } else {
+      (meeting !== null) ? this.meeting = JSON.parse(meeting) : self.location =  `${this.baseUrl}join_meeting`
+      this.user = this.meeting.recipient.names
+    }
+    //NEW USER JOINED
+    this.newUser()
+  }
+})
+
