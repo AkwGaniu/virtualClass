@@ -8285,7 +8285,6 @@ navigator.mediaDevices.getUserMedia(constraintObj)
   console.log({Error: err})
 })
 
-// const socket = io('/chat')
 const app =  new Vue({
   el: '#App',
   data: {

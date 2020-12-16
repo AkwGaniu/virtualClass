@@ -86,7 +86,6 @@ chat.on('connection', function (socket) {
 //Custom Error Handler middleware
 app.use((error, req, resp, next) => {
   resp.status(error.status || 500)
-
   resp.json({
       status: error.status,
       message: error.message,

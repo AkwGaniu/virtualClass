@@ -25,8 +25,8 @@ const emailTemplateSource = fs.readFileSync(path.join(__dirname, "../template/em
 
 const mailgunAuth = {
   auth: {
-    api_key: "5298e83281cf2f48423a0068bafc137a-ea44b6dc-61771cee",
-    domain: "sandboxc885cd9fbdb1408f8119ff8dc5589a0c.mailgun.org"
+    api_key: process.env.API_KEY,
+    domain: process.env.DOMAIN
   }
 }
 
