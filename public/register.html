@@ -101,6 +101,7 @@
           >
         </div>
         <input
+          ref="reg_btn"
           type="submit"
           @click.prevent="register()"
           value="Sign Up"
@@ -191,7 +192,7 @@
         }else if (profile_pic == '') {
           this.error = 'Please choose a profile picture'
         } else {
-
+          this.$refs.reg_btn.value = 'Processing...'
           payload  = new FormData()
           for (const file of profile_pic) {
             payload.append('file', file, file.name)
@@ -219,6 +220,7 @@
               }
           })
           .then(data => {
+            this.$refs.reg_btn.value = 'Register'
             if (data.reply === 'success') {
               localStorage.setItem('message', JSON.stringify({message: 'Registration successful, Please login'}))
               self.location = 'login.html'
@@ -227,6 +229,7 @@
             }
           })
           .catch(error => {
+            this.$refs.reg_btn.value = 'Register'
             console.log(error)
           })
         }

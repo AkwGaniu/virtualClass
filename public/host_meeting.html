@@ -98,6 +98,7 @@
               >
             </div>
             <input
+              ref="shedule_btn"
               type="submit"
               value="Submit"
               @click.prevent="hostMeeting()"
@@ -279,6 +280,7 @@
         if (title === '' || date === '' || to === '' || from === '') {
           this.error = 'All fields are required'
         } else {
+          this.$refs.shedule_btn.value = 'Processing...'
           this.error = ''
           thissuccessMessage =''
 
@@ -305,6 +307,7 @@
               }
           })
           .then(data => {
+            this.$refs.shedule_btn.value = 'Submit'
             if (data.reply === 'success') {
               this.response.status = true
               this.successMessage = 'Meeting scheduled successfully, find meeting details below'

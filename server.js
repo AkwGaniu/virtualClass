@@ -1,28 +1,22 @@
 const express = require('express')
 const upload_file = require('express-fileupload')
-const app = express()
 const dotenv = require('dotenv')
 const mongoose = require('mongoose')
+
+const app = express()
 const http = require('http').Server(app)
 const io = require ('socket.io')(http)
 const bodyParser = require('body-parser');
+dotenv.config()
 
 
 const routes  = require('./router/routes')
 const ioFunctions  = require('./controllers/ioFunctions')
 const Model = require('./model/schema')
 
-
 // app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(upload_file())
-
-// app.use(express.json())
-
-
-
-//CONFIGURE ENVIRONMENT VARIABLE HOLDER
-dotenv.config()
 
 //DATABASE CONNECTION
 mongoose.connect(process.env.DB_CONNECT, {useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false}, (err) => {

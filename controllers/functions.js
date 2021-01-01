@@ -6,34 +6,26 @@ const bcrypt = require('bcryptjs')
 const shortid = require('shortid')
 "use strict";
 const nodemailer = require("nodemailer");
-const mg = require("nodemailer-mailgun-transport")
 const handlebars = require("handlebars")
 const path = require("path")
 
 const settings = require('./baseData')
-const { env } = require('process')
-const { time } = require('console')
-
+// const { env } = require('process')
+// const { time } = require('console')
 cloudinary.config({ 
-  cloud_name: 'djxyqrkmi',
-  api_key: '936229992257755',
-  api_secret: 'f2EmndyU3QzODgVQ6_VP8LnFF3A'
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_API_KEY,
+  api_secret: process.env.CLOUD_SECRET_KEY
 });
-
-
 const emailTemplateSource = fs.readFileSync(path.join(__dirname, "../template/email_template.hbs"), "utf8")
-
-const mailgunAuth = {
+const smtpTransport = nodemailer.createTransport({
+  service: process.env.HOST,
   auth: {
-    api_key: process.env.API_KEY,
-    domain: process.env.DOMAIN
+    user: process.env.USER,
+    pass: process.env.PASS
   }
-}
-
-const smtpTransport = nodemailer.createTransport(mg(mailgunAuth))
-
+})
 const template = handlebars.compile(emailTemplateSource)
-
 
 module.exports.register_user = async function(req, resp, next) {
   try {
@@ -95,7 +87,6 @@ module.exports.login = async (req, resp, next) => {
   try {
     const user = await Model.users.findOne({email: email})
     if (!user) return resp.status(200).json({reply: "No account found for this email address"})
-  
     // CONFIRM USER PASSWORD
     const validPassword = await bcrypt.compare(password, user.password)
     if (!validPassword) return resp.status(200).json({reply: "Invalid passsword"})
@@ -114,7 +105,6 @@ module.exports.logout = async (req, resp, next) => {
   try {
     const user = await Model.users.findOne({email: email})
     if (!user) return resp.status(200).json({reply: "No account found for this email address"})
-  
     // CONFIRM USER PASSWORD
     const validPassword = await bcrypt.compare(password, user.password)
     if (!validPassword) return resp.status(200).json({reply: "Invalid passsword"})
@@ -132,58 +122,60 @@ module.exports.host_meeting = async (req, resp, next) => {
 }
 
 module.exports.schedule_meeting = async (req, resp, next) => {
-  const title = req.body.title
-  const host = req.body.current_user
-  const date = req.body.date
-  const from = req.body.from
-  const to = req.body.to
-  const meeting_id = shortid.generate()
-
-  let newMeeting = new Model.meetings ({
-    meeting_id: meeting_id,
-    title: title,
-    host: host,
-    status: settings.MEETING_STATUS.PENDING,
-    date: date,
-    from: from,
-    to: to
-  })
-
-  await newMeeting.save( async (err, data) => {
-    if(err) throw err
-    const host_name = await Model.users.findOne({_id: data.host})
-
-    const htmlToSend = template({
-      meeting_title: data.title,
-      meeting_id: data.meeting_id,
-      host: host_name.names,
-      meeting_date: data.date,
-      start_time: data.from,
-      end_time: data.to
+  try {
+    const title = req.body.title
+    const host = req.body.current_user
+    const date = req.body.date
+    const from = req.body.from
+    const to = req.body.to
+    const meeting_id = shortid.generate()
+  
+    let newMeeting = new Model.meetings ({
+      meeting_id: meeting_id,
+      title: title,
+      host: host,
+      status: settings.MEETING_STATUS.PENDING,
+      date: date,
+      from: from,
+      to: to
     })
-    
-    const mailOptions = {
-      from: "ganiu.akowanu@gmail.com",
-      to: "lmd4sure@gmail.com",
-      subject: "Virtual Meeting Details",
-      html: htmlToSend
-    }
+  
+    await newMeeting.save( async (err, data) => {
+      if(err) return next(err)
+      const host_info = await Model.users.findOne({_id: data.host})
 
-    smtpTransport.sendMail(mailOptions, function(error, response) {
-      if (error) {
-        console.log(error)
-      } else {
-        console.log({msg:"Successfully sent email.", response: response})
+      const htmlToSend = template({
+        meeting_title: data.title,
+        meeting_id: data.meeting_id,
+        host: host_info.names,
+        meeting_date: data.date,
+        start_time: data.from,
+        end_time: data.to
+      })   
+      const mailOptions = {
+        from: process.env.USER, 
+        to: host_info.email,
+        subject: "Meeting Details",
+        html: htmlToSend
       }
+      smtpTransport.sendMail(mailOptions, function(error, response) {
+        if (error) {
+          console.log(error)
+          return next(error)
+        } else {
+          resp.status(200).json({
+            reply: 'success',
+            meeting: data,
+            hostName: host_info.names
+          })  
+        }
+      })                                      
     })
-    // main()
-
-    resp.status(200).json({
-      reply: 'success', 
-      meeting: data,
-      hostName: host_name.names
-    })                                         
-  })
+  } catch (error) {
+    const err = new Error(error)
+    err.status = 500
+    return next(err)
+  }
 }
 
 module.exports.join_meeting = async (req, resp, next) => {
@@ -191,10 +183,10 @@ module.exports.join_meeting = async (req, resp, next) => {
 }
 
 module.exports.join_meeting_by_id = async (req, resp, next) => {
-  const id = req.params.id
-  const user = req.params.user
-  
   try {
+    const id = req.params.id
+    const user = req.params.user
+
     const meeting = await Model.meetings.findOne({meeting_id: id})
     if (meeting) {
       if (meeting.host == user) {
@@ -260,41 +252,3 @@ module.exports.feedback = async (req, resp, next) => {
     message: 'Feedback recieved, Thank you for sharing your thought.',
   })
 }
-
-
-
-// async..await is not allowed in global scope, must use a wrapper
-// async function main() {
-//   // Generate test SMTP service account from ethereal.email
-//   // Only needed if you don't have a real mail account for testing
-//   let testAccount = await nodemailer.createTestAccount();
-
-//   // create reusable transporter object using the default SMTP transport
-//   let transporter = nodemailer.createTransport({
-//     host: "smtp.ethereal.email",
-//     port: 587,
-//     secure: false, // true for 465, false for other ports
-//     auth: {
-//       user: testAccount.user, // generated ethereal user
-//       pass: testAccount.pass, // generated ethereal password
-//     },
-//   });
-
-//   // send mail with defined transport object
-//   let info = await transporter.sendMail({
-//     from: '"Fred Foo 👻" <lmd4sure@gmail.com>', // sender address
-//     to: "ganiu.akowanu@gmail.com", // list of receivers
-//     subject: "Hello ✔", // Subject line
-//     text: "Hello world?", // plain text body
-//     html: "<b>Hello world?</b>", // html body
-//   });
-
-//   console.log("Message sent: %s", info.messageId);
-//   // Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
-
-//   // Preview only available when sending through an Ethereal account
-//   console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-//   // Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
-// }
-
-// main().catch(console.error);

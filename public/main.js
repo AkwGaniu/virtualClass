@@ -116,7 +116,7 @@ navigator.mediaDevices.getUserMedia(constraintObj)
 const app =  new Vue({
   el: '#App',
   data: {
-    baseUrl: 'http://localhost:3000/',
+    baseUrl: 'https://virtuallclass.herokuapp.com/',
     meeting: {},
     msg: '',
     messages: [],

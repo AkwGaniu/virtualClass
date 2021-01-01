@@ -45,7 +45,7 @@
             <input 
               type="text" 
               autocomplete="off" 
-              placeholder="Username"
+              placeholder="Email address"
               v-model="user.email"
               @keyup.enter="tryLogin()"
             >
@@ -61,6 +61,7 @@
             >
           </div>
           <input
+            ref="submit_login"
             type="submit"
             value="Login"
             @click.prevent="tryLogin()"
@@ -129,6 +130,7 @@
         } else if (password.length < 6) {
           this.error = 'Your password cannot be less than 6 characters'
         } else {
+          this.$refs.submit_login.value = "Processing..."
           this.error = ''
           thissuccessMessage =''
           const payload  = new FormData()
@@ -152,6 +154,7 @@
               }
           })
           .then(data => {
+            this.$refs.submit_login.value = "Submit"
             if (data.reply === 'success') {
               localStorage.setItem('user', JSON.stringify({user: data.user}))
               self.location = 'index.html'
