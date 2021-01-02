@@ -70,7 +70,6 @@ chat.on('connection', function (socket) {
       clients++
     }
   })
-
   socket.on('offer', ioFunctions.sendOffer)
   socket.on('answer', ioFunctions.sendAnser) 
   socket.on('disconnect', ioFunctions.leaveMeeting)
@@ -81,9 +80,9 @@ chat.on('connection', function (socket) {
 app.use((error, req, resp, next) => {
   resp.status(error.status || 500)
   resp.json({
-      status: error.status,
-      message: error.message,
-      // stack: error.stack
+    status: error.status,
+    message: error.message,
+    // stack: error.stack
   })
 })
 

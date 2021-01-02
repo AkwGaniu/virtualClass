@@ -10,14 +10,14 @@ const handlebars = require("handlebars")
 const path = require("path")
 
 const settings = require('./baseData')
-// const { env } = require('process')
-// const { time } = require('console')
-cloudinary.config({ 
+
+const emailTemplateSource = fs.readFileSync(path.join(__dirname, "../template/email_template.hbs"), "utf8")
+cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_API_KEY,
   api_secret: process.env.CLOUD_SECRET_KEY
 });
-const emailTemplateSource = fs.readFileSync(path.join(__dirname, "../template/email_template.hbs"), "utf8")
+console.log(process.env.HOST)
 const smtpTransport = nodemailer.createTransport({
   service: process.env.HOST,
   auth: {
@@ -151,7 +151,7 @@ module.exports.schedule_meeting = async (req, resp, next) => {
         meeting_date: data.date,
         start_time: data.from,
         end_time: data.to
-      })   
+      })
       const mailOptions = {
         from: process.env.USER, 
         to: host_info.email,
@@ -167,7 +167,7 @@ module.exports.schedule_meeting = async (req, resp, next) => {
             reply: 'success',
             meeting: data,
             hostName: host_info.names
-          })  
+          })
         }
       })                                      
     })

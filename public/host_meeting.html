@@ -290,7 +290,6 @@
           payload.append('from', from)
           payload.append('to', to)
           payload.append('current_user', current_user.user)
-
           const fetchData  = {
             method: 'post',
             body:  payload,
@@ -300,11 +299,15 @@
 
           fetch(url, fetchData)
           .then(resp => {
-              if(resp.ok) {
-                return resp.json()
-              } else {
-                return Promise.reject()
-              }
+            if(resp.ok) {
+              return resp.json()
+            } else if (resp.statusText === "Internal Server Error") {
+              this.error = "Opps, something went wrong, please try again"
+              this.$refs.shedule_btn.value = 'Submit'
+              return Promise.reject()
+            } else {
+              return Promise.reject()
+            }
           })
           .then(data => {
             this.$refs.shedule_btn.value = 'Submit'
