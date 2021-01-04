@@ -313,7 +313,7 @@
             this.$refs.shedule_btn.value = 'Submit'
             if (data.reply === 'success') {
               this.response.status = true
-              this.successMessage = 'Meeting scheduled successfully, find meeting details below'
+              this.successMessage = 'Meeting scheduled successfully, find meeting details below. Also check your mail for meeting Details'
               this.response.data = data.meeting
               this.response.host = data.hostName
             } else {

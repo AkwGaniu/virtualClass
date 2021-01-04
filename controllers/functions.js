@@ -17,12 +17,19 @@ cloudinary.config({
   api_key: process.env.CLOUD_API_KEY,
   api_secret: process.env.CLOUD_SECRET_KEY
 });
-console.log(process.env.HOST)
 const smtpTransport = nodemailer.createTransport({
-  service: process.env.HOST,
+  service: process.env.USER,
+  port:465,
+  secure: true, // true for 465, false for other ports
+  logger: false,
+  debug: false,
+  secureConnection: false,
   auth: {
     user: process.env.USER,
     pass: process.env.PASS
+  },
+  tls:{
+    rejectUnAuthorized:true
   }
 })
 const template = handlebars.compile(emailTemplateSource)
