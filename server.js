@@ -9,12 +9,10 @@ const io = require ('socket.io')(http)
 const bodyParser = require('body-parser');
 dotenv.config()
 
-
 const routes  = require('./router/routes')
 const ioFunctions  = require('./controllers/ioFunctions')
 const Model = require('./model/schema')
 
-// app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(upload_file())
 
@@ -30,14 +28,13 @@ app.use((req, resp, next) => {
   resp.header('Access-Control-Allow-headers', 'Content-type, Accept, x-access-token, x-key')
 
   if(req.method === 'OPTIONS') {
-      resp.status(200).end()
+    resp.status(200).end()
   } else {
-      next()
+    next()
   }
 })
 
 app.use('/', routes)
-
 app.use(express.static(__dirname + "/public"))
 const chat = io.of('/chat')
 const video = io.of('/video')
@@ -46,19 +43,14 @@ let clients = 0
 chat.on('connection', function (socket) {
   // CHATTING FUNCTIONALITIES
   socket.on('newUser', sendNewUser)
-
   socket.on('chat', ioFunctions.broadcastMsg)
-
   socket.on('typing', (user) => {
     socket.broadcast.emit('userTyping', `${user} is typing...`)
   })
-
   socket.on('finish', (user) => {
     socket.broadcast.emit('userStoppedTyping', user)
   })
-
   socket.on('leaveMeeting', ioFunctions.leaveMeeting)
-
   socket.on('endMeeting', ioFunctions.endMeeting)
 
   // VIDEO
