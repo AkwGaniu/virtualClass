@@ -67,7 +67,6 @@ chat.on('connection', function (socket) {
   socket.on('disconnect', ioFunctions.leaveMeeting)
 })
 
-
 //Custom Error Handler middleware
 app.use((error, req, resp, next) => {
   resp.status(error.status || 500)
