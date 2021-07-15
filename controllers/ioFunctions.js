@@ -6,47 +6,44 @@ module.exports.endMeeting = function(meeting) {
   try {
     Model.meetings.findOneAndUpdate(
       {_id: meeting.meeting},
-      {status: settings.MEETING_STATUS.CLOSED},
-      {new: true}, async (err, data)=> {
-        if (err) throw(err)
-        let participants = await Model.participants.find({meeting_id: meeting.meeting})
-        for (let i=0; i<participants.length; i++) {
-          await Model.participants.findOneAndDelete({_id: participants[i]._id})
-        }
+      {
+        status: settings.MEETING_STATUS.CLOSED,
+        participants: []
+      },
+      {new: false}, async (err, data)=> {
+        if (err) next(err)
         this.broadcast.emit('meetingEnded')
     })
   } catch (error) {
     console.log(error)
     next(error)
   }
-
 }
 
-module.exports.leaveMeeting = function (datas) {
+module.exports.leaveMeeting = function async (payload)  {
   try {
     const msg = {
-      message: '',
+      message: '', 
       meetingParticipants: []
     }
-    Model.participants.findOneAndDelete({
-      socketId: this.id
-    }, async (err, data)=> {
-      if (err) console.log(err)
-      if (data !== null) {
-        let recipient = await Model.users.findOne({_id: data.participant}, {password: false})
+    Model.meetings.findOne({ _id: payload.meeting }, async (err, data) => {
+      if (err) return next(err)
+      if (data) {
+        let recipient = await Model.users.findOne({_id: payload.participant}, {password: false})
         msg.message = `${recipient.names} left`
-        Model.participants.find({meeting_id: data.meeting_id}, async (err, data)=> {
-          if (err) throw err
-          for (user of data) {
-            let recipient = await Model.users.findOne({_id: user.participant}, {password: false})
-            msg.meetingParticipants.push(recipient)
-          } 
-          this.broadcast.emit('participantLeft', msg)
-        })
+        data.participants.splice(data.participants.indexOf(payload.participant), 1)
+        const newMeetingData = await Model.meetings.findOneAndUpdate({_id: payload.meeting}, {participants: data.participants}, {new:true})
+        for (user of newMeetingData.participants) {
+          let recipient = await Model.users.findOne({_id: user}, {password: false})
+          msg.meetingParticipants.push(recipient)
+        }
+        this.broadcast.emit('participantLeft', msg)
+      } else {
+        console.log({Error_Not_found: data})
       }
     })
   } catch (err) {
-    console.log(err)
+    console.log({Error: err})
     next(err)
   }
 }
@@ -57,33 +54,19 @@ module.exports.broadcastMsg = async function (msg) {
     sender: msg.sender,
     message: msg.message,
   }
-  console.log(this.id)
   try {
-    const meetingExist = await Model.messages.findOne({ meeting_id: msg.meeting_id })
-    if (!meetingExist) {
-      let messages = []
-      messages.push(newMessage)
-      let newChat = new Model.messages({
-        meeting_id: msg.meeting_id,
-        messages: messages,
-      })
-      newChat.save((err, data) => {
-        if(err) throw err
-        this.broadcast.emit('message', data.messages)
-      })
-    } else {
-      meetingExist.messages.push(newMessage)
-      await Model.messages
-      .findOneAndUpdate(
-        {meeting_id: meetingExist.meeting_id},
-        {messages: meetingExist.messages},
-        {new: true}, async (err, data) => {
-          if (err) next(err)
-          this.broadcast.emit('message', data.messages)
-      }).catch((error) => {
-        next(error)
-      })
-    }
+    const meeting = await Model.meetings.findOne({ _id: msg.meeting_id })
+    meeting.chats.push(newMessage)
+    await Model.meetings
+    .findOneAndUpdate(
+      { _id: msg.meeting_id },
+      {chats: meeting.chats},
+      {new: true}, async (err, data) => {
+        if (err) next(err)
+        this.broadcast.emit('message', data.chats)
+    }).catch((error) => {
+      console.log(error)
+    })
   } catch (error) {
     console.log(error)
     next(error)

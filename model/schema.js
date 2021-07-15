@@ -26,7 +26,8 @@ const userModel = new mongoose.Schema({
 const meetingModel = new mongoose.Schema({
   meeting_id: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   title: {
     type: String,
@@ -52,6 +53,12 @@ const meetingModel = new mongoose.Schema({
   to: {
     type: String,
     required: true
+  },
+  participants: {
+    type: Array
+  },
+  chats: {
+    type: Array
   }
 })
 
