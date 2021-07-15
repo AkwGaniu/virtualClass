@@ -5,16 +5,14 @@ const mongoose = require('mongoose')
 
 const app = express()
 const http = require('http').Server(app)
-const io = require ('socket.io')(http)
+const io = require ('socket.io')(http) 
 const bodyParser = require('body-parser');
 dotenv.config()
-
 
 const routes  = require('./router/routes')
 const ioFunctions  = require('./controllers/ioFunctions')
 const Model = require('./model/schema')
 
-// app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(upload_file())
 
@@ -30,14 +28,13 @@ app.use((req, resp, next) => {
   resp.header('Access-Control-Allow-headers', 'Content-type, Accept, x-access-token, x-key')
 
   if(req.method === 'OPTIONS') {
-      resp.status(200).end()
+    resp.status(200).end()
   } else {
-      next()
+    next()
   }
 })
 
 app.use('/', routes)
-
 app.use(express.static(__dirname + "/public"))
 const chat = io.of('/chat')
 const video = io.of('/video')
@@ -46,35 +43,33 @@ let clients = 0
 chat.on('connection', function (socket) {
   // CHATTING FUNCTIONALITIES
   socket.on('newUser', sendNewUser)
-
   socket.on('chat', ioFunctions.broadcastMsg)
-
   socket.on('typing', (user) => {
     socket.broadcast.emit('userTyping', `${user} is typing...`)
   })
-
   socket.on('finish', (user) => {
     socket.broadcast.emit('userStoppedTyping', user)
   })
-
   socket.on('leaveMeeting', ioFunctions.leaveMeeting)
-
   socket.on('endMeeting', ioFunctions.endMeeting)
 
-  // VIDEO
-  socket.on('newClient', async function (recipient) {
-    if (clients !== 0) {
-      console.log(clients)
-      io.of('chat').emit('createPeer')
-    } else {
-      clients++
+  // VIDEO FUNCTIONALITIES
+  socket.on('newVideoClient', async function (payload) {
+    const current_meeting = await Model.meetings.findOne({ _id: payload.meeting_id })
+    console.log(current_meeting.participants)
+    if (current_meeting.participants.length !== 1) {
+      if (current_meeting.participants.indexOf(payload.current_user) < 0) {
+        io.of('chat').emit('createPeer', {newUser: true})
+        console.log("here comes the third client")
+      } else {
+        io.of('chat').emit('createPeer', {newUser: false})
+      }
     }
   })
   socket.on('offer', ioFunctions.sendOffer)
   socket.on('answer', ioFunctions.sendAnser) 
-  socket.on('disconnect', ioFunctions.leaveMeeting)
+  // socket.on('disconnect', ioFunctions.leaveMeeting)
 })
-
 
 //Custom Error Handler middleware
 app.use((error, req, resp, next) => {
@@ -90,68 +85,19 @@ const port = process.env.PORT || 3000
 http.listen(port, () => console.log(`Server active on port ${port}`))
 
 // FUNCTIONS
-const sendNewUser = async function  (user) {
+const sendNewUser = async function  (payload) {
   try {
     let meetingPayload = {
       chats: [],
       participants:  [],
     }
-    const recipentExist = await Model.participants.findOne({
-      // participant: user.recipient._id,
-      // meeting_id: user.meeting._id,
-      socketId: this.id
-
-    })
-    if (!recipentExist) {
-      let newParticipant = new Model.participants({
-        meeting_id: user.meeting._id,
-        participant: user.recipient._id,
-        socketId: this.id
-      })
-      newParticipant.save( async (err, data) => {
-        if(err) next(err)
-        await Model.messages.findOne({ meeting_id: user.meeting._id }, (err, data)=> {
-          if (err) next(err)
-          if (data !== null) {
-            meetingPayload.chats = data.messages
-          } else {
-            meetingPayload.chats = []
-          }
-        })
-        let recipient = await Model.users.findOne({_id: user.recipient._id}, {password: false})
-        this.broadcast.emit('userJoined', `${recipient.names} Joined`)
-        Model.participants.find({meeting_id: data.meeting_id}, async (err, data)=> {
-          if (err) throw err
-          for (user of data) {
-            let recipient = await Model.users.findOne({_id: user.participant}, {password: false})
-            meetingPayload.participants.push(recipient)
-          }
-          io.of('chat').emit('appendUser', meetingPayload)
-        })
-      })
-    } else {
-      let data = {
-        participants: user.recipient._id,
-        meeting_id: user.meeting._id,
-      }
-      await Model.messages.findOne({ meeting_id: user.meeting._id }, (err, data)=> {
-        if (err) next(err) 
-        if (data !== null) {
-          meetingPayload.chats = data.messages
-        } else {
-          meetingPayload.chats = []
-        }
-      })
-      
-      Model.participants.find({meeting_id: data.meeting_id}, async (err, data)=> {
-        if (err) throw err
-        for (user of data) {
-          let recipient = await Model.users.findOne({_id: user.participant}, {password: false})
-          meetingPayload.participants.push(recipient)
-        }
-        io.of('chat').emit('appendUser', meetingPayload)
-      })
+    for (user of payload.meeting.participants) {
+      let recipient = await Model.users.findOne({_id: user}, {password: false})
+      meetingPayload.participants.push(recipient)
     }
+    const current_meeting = await Model.meetings.findOne({_id: payload.meeting._id})
+    meetingPayload.chats = current_meeting.chats
+    io.of('chat').emit('appendUser', meetingPayload)
   } catch (error) {
     console.log(error)
   }

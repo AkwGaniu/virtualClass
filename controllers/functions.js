@@ -62,7 +62,7 @@ module.exports.register_user = async function(req, resp, next) {
             if (err) throw(err)
             cloudinary.v2.uploader.upload(file_path, async function(error, result) {
               if (error) return console.log(error)
-
+              fs.unlinkSync(file_path)
               let newUser = new Model.users({
                 names: names,
                 email: email,
@@ -71,7 +71,6 @@ module.exports.register_user = async function(req, resp, next) {
                 user_profile_image_path: result.secure_url,
               })
               savedUser = await newUser.save()
-              fs.unlinkSync(file_path)
               resp.status(200).json({reply:"success"})
             })
           })
@@ -193,19 +192,23 @@ module.exports.join_meeting_by_id = async (req, resp, next) => {
   try {
     const id = req.params.id
     const user = req.params.user
-
+  
     const meeting = await Model.meetings.findOne({meeting_id: id})
     if (meeting) {
-      if (meeting.host == user) {
-        if (meeting.status === 'CLOSED') {
-          resp.status(200).json({
-            reply: "The meeting is over"
-          })
-        } else {
+      if (meeting.participants.indexOf(user) >= 0) {
+        resp.status(200).json({
+          reply: "Hey!!! Someone is representing you in the meeting already"
+        })
+      } else {
+        meeting.participants.push(user)
+        if (meeting.host == user) {
           await Model.meetings
           .findOneAndUpdate(
             {meeting_id: meeting.meeting_id},
-            {status: settings.MEETING_STATUS.IN_PROGRESS},
+            {
+              status: settings.MEETING_STATUS.IN_PROGRESS,
+              participants: meeting.participants
+            },
             {new: true}, async (err, data) => {
               if (err) next(err)
               const recipient = await Model.users.findOne({_id: user}, {password: false})
@@ -217,22 +220,31 @@ module.exports.join_meeting_by_id = async (req, resp, next) => {
           }).catch((error) => {
             next(err)
           })
+        } else if (meeting.status === 'PENDING') {
+          resp.status(200).json({
+            reply: "The meeting host is yet to start the meeting, Please check back"
+          })
+        } else if (meeting.status === 'CLOSED') {
+          resp.status(200).json({
+            reply: "The meeting is over, contact the host for a reschedule"
+          })
+        } else {
+          await Model.meetings
+          .findOneAndUpdate(
+            {meeting_id: meeting.meeting_id},
+            { participants: meeting.participants },
+            {new: true}, async (err, data) => {
+              if (err) return next(err)
+              const recipient = await Model.users.findOne({_id: user}, {password: false})
+              resp.status(200).json({
+                reply: 'success',
+                meeting: data,
+                recipient: recipient
+              })
+          }).catch((error) => {
+            next(err)
+          })
         }
-      } else if (meeting.status === 'PENDING') {
-        resp.status(200).json({
-          reply: "The meeting host is yet to start the meeting, Please check back"
-        })
-      } else if (meeting.status === 'CLOSED') {
-        resp.status(200).json({
-          reply: "The meeting is over, contact the host for a reschedule"
-        })
-      } else {
-        const recipient = await Model.users.findOne({_id: user}, {password: false})
-        resp.status(200).json({
-          reply: 'success',
-          meeting: meeting,
-          recipient: recipient
-        })
       }
     } else {
       resp.status(200).json({

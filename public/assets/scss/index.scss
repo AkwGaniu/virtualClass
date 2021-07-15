@@ -74,9 +74,12 @@ body{
 
 .end-meeting {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 3px 10px;
   background-color: rgb(88, 86, 86);
+  h3 {
+    color: #f3f6f7;
+  }
   button {
     border: 0;
     border-radius: 5px;
