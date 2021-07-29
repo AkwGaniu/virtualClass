@@ -386,7 +386,7 @@ const app =  new Vue({
     navigator.mediaDevices.getUserMedia(constraintObj)
     .then(stream => {
       this.videoStream = stream
-      socket.emit('newClient', meeting_detail)
+      socket.emit('newVideoClient', meeting_detail)
       viddeo.videoInput.srcObject = stream;
       viddeo.videoInput.play();
       
