@@ -157,7 +157,7 @@
             this.$refs.submit_login.value = "Submit"
             if (data.reply === 'success') {
               localStorage.setItem('user', JSON.stringify({user: data.user}))
-              // self.location = 'index.html'
+              self.location = 'index.html'
             } else {
               this.error = data.reply
             }
