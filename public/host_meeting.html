@@ -334,8 +334,9 @@
       const user = localStorage.getItem('user')
       const meeting = localStorage.getItem('meeting')
 
-        if (user == null) {
-          self.location = 'login.html'
+        if (user === null) {
+          // self.location = 'login.html'
+          console.log(user)
         } else {
         const current_user = JSON.parse(user)
         if (current_user) {

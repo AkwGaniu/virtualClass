@@ -6,14 +6,14 @@ const mongoose = require('mongoose')
 const app = express()
 const http = require('http').Server(app)
 const io = require ('socket.io')(http) 
-const bodyParser = require('body-parser');
+// const bodyParser = require('body-parser');
 dotenv.config()
 
 const routes  = require('./router/routes')
 const ioFunctions  = require('./controllers/ioFunctions')
 const Model = require('./model/schema')
 
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(upload_file())
 
 //DATABASE CONNECTION

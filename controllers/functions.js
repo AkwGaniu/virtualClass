@@ -17,21 +17,32 @@ cloudinary.config({
   api_key: process.env.CLOUD_API_KEY,
   api_secret: process.env.CLOUD_SECRET_KEY
 });
+// const smtpTransport = nodemailer.createTransport({
+//   service: process.env.HOST,
+//   port: 465,
+//   secure: true, // true for 465, false for other ports
+//   logger: false,
+//   debug: false,
+//   secureConnection: false,
+//   auth: {
+//     user: process.env.USER_EMAIL,
+//     pass: process.env.PASS
+//   },
+//   tls:{
+//     rejectUnAuthorized:true
+//   }
+// })
+
 const smtpTransport = nodemailer.createTransport({
-  service: process.env.USER,
-  port:465,
-  secure: true, // true for 465, false for other ports
-  logger: false,
-  debug: false,
-  secureConnection: false,
+  host: process.env.HOST,
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.USER,
-    pass: process.env.PASS
-  },
-  tls:{
-    rejectUnAuthorized:true
+    user: process.env.USER_EMAIL,
+    pass: process.env.PASS,
   }
 })
+
 const template = handlebars.compile(emailTemplateSource)
 
 module.exports.register_user = async function(req, resp, next) {
@@ -105,23 +116,23 @@ module.exports.login = async (req, resp, next) => {
   }
 }
 
-module.exports.logout = async (req, resp, next) => {
-  const email = req.body.email
-  const password = req.body.password
-  try {
-    const user = await Model.users.findOne({email: email})
-    if (!user) return resp.status(200).json({reply: "No account found for this email address"})
-    // CONFIRM USER PASSWORD
-    const validPassword = await bcrypt.compare(password, user.password)
-    if (!validPassword) return resp.status(200).json({reply: "Invalid passsword"})
-    resp.status(200).json({
-      reply: 'success',
-      user: user
-    })
-  } catch (error) {
-    next(error)
-  }
-}
+// module.exports.logout = async (req, resp, next) => {
+//   const email = req.body.email
+//   const password = req.body.password
+//   try {
+//     const user = await Model.users.findOne({email: email})
+//     if (!user) return resp.status(200).json({reply: "No account found for this email address"})
+//     // CONFIRM USER PASSWORD
+//     const validPassword = await bcrypt.compare(password, user.password)
+//     if (!validPassword) return resp.status(200).json({reply: "Invalid passsword"})
+//     resp.status(200).json({
+//       reply: 'success',
+//       user: user
+//     })
+//   } catch (error) {
+//     next(error)
+//   }
+// }
 
 module.exports.host_meeting = async (req, resp, next) => {
   resp.status(200).redirect(`${settings.baseUrl}host_meeting.html`)
@@ -159,7 +170,7 @@ module.exports.schedule_meeting = async (req, resp, next) => {
         end_time: data.to
       })
       const mailOptions = {
-        from: process.env.USER, 
+        from: process.env.USER_EMAIL, 
         to: host_info.email,
         subject: "Meeting Details",
         html: htmlToSend
@@ -178,6 +189,7 @@ module.exports.schedule_meeting = async (req, resp, next) => {
       })                                      
     })
   } catch (error) {
+    console.log(error)
     const err = new Error(error)
     err.status = 500
     return next(err)
@@ -192,7 +204,6 @@ module.exports.join_meeting_by_id = async (req, resp, next) => {
   try {
     const id = req.params.id
     const user = req.params.user
-  
     const meeting = await Model.meetings.findOne({meeting_id: id})
     if (meeting) {
       if (meeting.participants.indexOf(user) >= 0) {
